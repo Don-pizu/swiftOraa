@@ -1,0 +1,141 @@
+//app.js
+
+require('dotenv').config();
+
+const express = require('express');
+const app = express();
+
+const connectDB = require('./config/db');
+const path = require ('path');
+const http = require ('http');
+
+
+// NEW: security libs
+const cors = require("cors");
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const sanitize = require('mongo-sanitize');
+const xss = require('xss-clean');
+
+const authRoutes = require('./routes/authRoutes');
+const meetingRoutes = require('./routes/meetingRoutes');
+const participantRoutes = require('./routes/meetingRoutes');
+
+//DB connection
+connectDB();
+
+//Middleware to parse JSON
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// Security hardening
+//helmet
+app.use(
+  helmet.contentSecurityPolicy({
+    useDefaults: true,
+    directives: {
+      defaultSrc: [
+        "'self'",
+        "http://localhost:5000"
+      ],
+      scriptSrc: [
+        "'self'",
+        "https://cdn.jsdelivr.net",
+        "https://cdn.socket.io",   // allow socket.io CDN
+      ],
+      workerSrc: ["'self'", "blob:"],
+      childSrc: ["'self'", "blob:"],
+      connectSrc: [
+        "'self'",
+        "blob:",
+        "data:",
+        "https://cdn.jsdelivr.net",   // allow worker importScripts
+        "https://cdn.socket.io",
+        //"http://localhost:5000",
+        //"http://127.0.0.1:5500",
+        //"http://localhost:5500",
+        "https://trashbeta.onrender.com",
+        "https://res.cloudinary.com"
+      ],
+      imgSrc: [
+        "'self'", 
+        "data:", 
+        "blob:", 
+        "http://localhost:5000", 
+        "https://trashbeta.onrender.com", 
+        "https://res.cloudinary.com"
+      ], // FIX: allow blob: images
+    },
+  })
+);
+
+
+
+//mongo-sanitize
+app.use((req, res, next) => {
+  if (req.body) req.body = sanitize(req.body);
+  if (req.query) req.query = sanitize(req.query);
+  if (req.params) req.params = sanitize(req.params);
+
+  next();
+});
+
+
+
+//xss-clean Security sanitization middleware (SAFE VERSION)
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    Object.keys(req.body).forEach(key => {
+      if (typeof req.body[key] === 'string') {
+        req.body[key] = req.body[key].trim();
+      }
+    });
+  }
+
+  next();
+});
+
+
+
+
+//ratelimit
+const limiter = rateLimit({ 
+windowMs: 15 * 60 * 1000, // 15 minutes 
+max: 100, // max 100 requests per IP 
+message: 'Too many requests from this IP, please try again later.' 
+}); 
+app.use('/api', limiter);
+
+
+
+// CORS configuration
+const allowedOrigins = [
+  'http://localhost:5000',   // If frontend serves on 5000
+  'http://127.0.0.1:5500',
+  'null', //To allow frontend guys to work freely for now
+  //'https://trashbeta.onrender.com', //deployed backend 
+  //'https://thrashbeta.vercel.app'  // deployed frontend  
+  //'http://localhost:5500',
+  ]; 
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+
+//Routes
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/', meetingRoutes);
+app.use('/api/v1/', participantRoutes);
+
+
+module.exports = app;

@@ -17,5 +17,20 @@
   "bugs": {
     "url": "https://github.com/Don-pizu/swiftOraa/issues"
   },
-  "homepage": "https://github.com/Don-pizu/swiftOraa#readme"
+  "homepage": "https://github.com/Don-pizu/swiftOraa#readme",
+  "dependencies": {
+    "cloudinary": "^2.9.0",
+    "cors": "^2.8.6",
+    "crypto": "^1.0.1",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongo-sanitize": "^1.1.0",
+    "mongoose": "^9.5.0",
+    "nanoid": "^5.1.9",
+    "resend": "^6.12.2",
+    "xss-clean": "^0.1.4"
+  }
 }
